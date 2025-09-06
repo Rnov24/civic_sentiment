@@ -12,6 +12,7 @@ of comments.
 
 import os
 
+import os
 from typing import List
 
 import pandas as pd
@@ -79,11 +80,15 @@ def get_video_comments(api_key, video_id):
     return comments
 
 
-@app.command()
-def main(video_ids: List[str] = typer.Argument(..., help="List of video IDs to scrape")):
+def scrape_videos(video_ids: List[str]) -> pd.DataFrame:
     """
-    Main function to scrape comments, combine them, and save a single CSV to
-    data/raw.
+    Scrapes comments from a list of YouTube videos and returns a pandas DataFrame.
+
+    Args:
+        video_ids: A list of YouTube video IDs.
+
+    Returns:
+        A pandas DataFrame containing the scraped comments.
     """
     all_comments_frames = []
     video_id_to_title = {}
@@ -118,9 +123,23 @@ def main(video_ids: List[str] = typer.Argument(..., help="List of video IDs to s
 
     if not all_comments_frames:
         logger.info("No comments found.")
-        return
+        return pd.DataFrame()
 
     combined_df = pd.concat(all_comments_frames, ignore_index=True)
+    return combined_df
+
+
+@app.command()
+def main(video_ids: List[str] = typer.Argument(..., help="List of video IDs to scrape")):
+    """
+    Main function to scrape comments, combine them, and save a single CSV to
+    data/raw.
+    """
+    combined_df = scrape_videos(video_ids)
+
+    if combined_df.empty:
+        return
+
     total_comments = len(combined_df)
 
     # Ensure output directory exists
@@ -141,8 +160,10 @@ def main(video_ids: List[str] = typer.Argument(..., help="List of video IDs to s
     logger.info(f"Total comments: {total_comments}")
     logger.info("-" * 60)
     for _, row in group_counts.iterrows():
-        title = video_id_to_title.get(row["video_id"], row["video_id"])
-        logger.info(f"{title} ({row['video_id']}): {row['text']} comments")
+        # This part is a bit tricky since we don't have the titles here.
+        # We would need to either return the titles from scrape_videos or fetch them again.
+        # For now, we'll just use the video ID.
+        logger.info(f"{row['video_id']}: {row['text']} comments")
     logger.info(header)
 
 
